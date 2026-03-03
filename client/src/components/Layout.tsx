@@ -130,11 +130,11 @@ export default function Layout({ children }: LayoutProps) {
               >
                 <item.icon className="w-4.5 h-4.5 shrink-0" />
                 <span className="truncate">{item.label}</span>
-                {item.to === '/alerts' && alertCount > 0 && (
+                {/* {item.to === '/alerts' && alertCount > 0 && (
                   <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 min-w-[20px] text-center">
                     {alertCount}
                   </span>
-                )}
+                )} */}
               </NavLink>
             ))}
           </nav>
