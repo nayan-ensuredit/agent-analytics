@@ -10,6 +10,11 @@ export interface AuthUser {
   role: 'admin' | 'general';
 }
 
+interface StoredAuth {
+  user: AuthUser;
+  expiresAt: number; // end-of-day timestamp
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   login: (username: string, password: string) => boolean;
@@ -17,20 +22,33 @@ interface AuthContextValue {
   isAuthenticated: boolean;
 }
 
+const AUTH_KEY = 'auth_user';
+
+function endOfDay(): number {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d.getTime();
+}
+
+function loadStoredUser(): AuthUser | null {
+  try {
+    const raw = localStorage.getItem(AUTH_KEY);
+    if (!raw) return null;
+    const stored: StoredAuth = JSON.parse(raw);
+    if (Date.now() > stored.expiresAt) {
+      localStorage.removeItem(AUTH_KEY);
+      return null;
+    }
+    return stored.user;
+  } catch {
+    return null;
+  }
+}
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    const stored = sessionStorage.getItem('auth_user');
-    if (stored) {
-      try {
-        return JSON.parse(stored) as AuthUser;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [user, setUser] = useState<AuthUser | null>(loadStoredUser);
 
   const login = useCallback((username: string, password: string): boolean => {
     const expected = CREDENTIALS[username];
@@ -39,8 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         username,
         role: username === 'ensuredit-admin' ? 'admin' : 'general',
       };
+      const stored: StoredAuth = { user: authUser, expiresAt: endOfDay() };
       setUser(authUser);
-      sessionStorage.setItem('auth_user', JSON.stringify(authUser));
+      localStorage.setItem(AUTH_KEY, JSON.stringify(stored));
       return true;
     }
     return false;
@@ -48,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setUser(null);
-    sessionStorage.removeItem('auth_user');
+    localStorage.removeItem(AUTH_KEY);
   }, []);
 
   return (
