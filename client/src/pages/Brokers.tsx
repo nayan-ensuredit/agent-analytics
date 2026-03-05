@@ -4,12 +4,7 @@ import ChartCard from "../components/ChartCard";
 import DataTable from "../components/DataTable";
 import type { Column } from "../components/DataTable";
 import StatusBadge from "../components/StatusBadge";
-import {
-  formatINR,
-  formatNumber,
-  formatPercent,
-  CHART_COLORS,
-} from "../utils";
+import { formatINR, formatNumber, formatPercent, CHART_COLORS } from "../utils";
 import {
   LineChart,
   Line,
@@ -21,6 +16,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { ReactNode } from "react";
+import { CustomTooltip } from "../components/CustomToolTip";
 
 /* All API values come as strings from PostgreSQL */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -220,13 +216,9 @@ export default function Brokers() {
                     stroke="#94a3b8"
                     tickFormatter={(v: unknown) => formatINR(v)}
                   />
-                  <Tooltip
-                    formatter={(value: unknown, name?: string) => [
-                      formatNumber(value),
-                      name ?? "",
-                    ]}
-                  />
-                  <Legend />
+
+                  <Tooltip content={<CustomTooltip />} />
+
                   {brokerKeys.map((key, i) => (
                     <Line
                       key={key}
@@ -240,6 +232,25 @@ export default function Brokers() {
                   ))}
                 </LineChart>
               </ResponsiveContainer>
+
+              {/* Scrollable legend using available bottom space */}
+              <div className="mt-4 max-h-[80px] overflow-y-auto border-t pt-2">
+                <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                  {brokerKeys.map((key, i) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <span
+                        className="w-3 h-3 rounded-full"
+                        style={{
+                          backgroundColor:
+                            CHART_COLORS[i % CHART_COLORS.length],
+                        }}
+                      />
+                      <span className="text-slate-600">{key}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="mt-3 p-3 bg-emerald-50 rounded-lg text-sm text-emerald-800">
                 <strong>Insight:</strong> Watch for diverging trends. If a top
                 broker's volume is declining, engage immediately to understand
