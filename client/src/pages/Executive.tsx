@@ -39,14 +39,7 @@ interface ConcentrationData {
   top_broker_name: string;
   top_broker_premium: string;
   top_broker_pct: string;
-  top10_agents_pct: string;
-  top10_agents_premium: string;
-  total_6m_agent_premium: string;
-  top5_agents: Array<{
-    agent_id: number;
-    agent_name: string;
-    agent_premium: number;
-  }>;
+  top7_brokers?: Array<{ broker_name: string; broker_premium: number }>;
 }
 
 export default function Executive() {
@@ -67,20 +60,15 @@ export default function Executive() {
     total_premium: Number(d.total_premium),
   }));
 
-  /* Reshape concentration object into chart-friendly array */
+  const shortName = (name: string) => name.split(' ')[0];
+
+  /* Reshape top brokers — use top7_brokers if available (new cache), fall back to single broker */
   const concentrationChartData = concentration
-    ? [
-        {
-          name: concentration.top_broker_name,
-          premium: Number(concentration.top_broker_premium),
-          type: "broker",
-        },
-        ...(concentration.top5_agents ?? []).map((a) => ({
-          name: a.agent_name,
-          premium: Number(a.agent_premium),
-          type: "agent",
-        })),
-      ]
+    ? (concentration.top7_brokers?.length
+        ? concentration.top7_brokers.map(b => ({ name: shortName(b.broker_name), premium: Number(b.broker_premium) }))
+        : concentration.top_broker_name
+          ? [{ name: shortName(concentration.top_broker_name), premium: Number(concentration.top_broker_premium) }]
+          : [])
     : [];
 
   return (
@@ -213,12 +201,12 @@ export default function Executive() {
         {/* Revenue Concentration */}
         <ChartCard
           title="Revenue Concentration"
-          subtitle="Top brokers and agents by premium"
+          subtitle="Top brokers by premium"
           loading={concLoading}
         >
           {concentrationChartData.length > 0 ? (
             <>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={340}>
                 <BarChart
                   data={concentrationChartData}
                   layout="vertical"
@@ -244,15 +232,7 @@ export default function Executive() {
                       "Premium",
                     ]}
                   />
-                  <Bar dataKey="premium" radius={[0, 4, 4, 0]}>
-                    {concentrationChartData.map((_entry, index) => {
-                      const barColor =
-                        _entry.type === "broker"
-                          ? CHART_COLORS[0]
-                          : CHART_COLORS[2];
-                      return <rect key={index} fill={barColor} />;
-                    })}
-                  </Bar>
+                  <Bar dataKey="premium" radius={[0, 4, 4, 0]} fill={CHART_COLORS[0]} />
                 </BarChart>
               </ResponsiveContainer>
               {/* Summary stats */}
@@ -260,11 +240,6 @@ export default function Executive() {
                 <div className="flex flex-wrap gap-3 mt-3">
                   <div className="px-3 py-1.5 bg-slate-100 rounded-full text-xs font-medium text-slate-700">
                     Top Broker: {formatPercent(concentration.top_broker_pct)} of
-                    premium
-                  </div>
-                  <div className="px-3 py-1.5 bg-slate-100 rounded-full text-xs font-medium text-slate-700">
-                    Top 10 Agents:{" "}
-                    {formatPercent(concentration.top10_agents_pct)} of agent
                     premium
                   </div>
                 </div>

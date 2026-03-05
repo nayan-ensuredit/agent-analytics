@@ -1,6 +1,6 @@
 import { useFilteredApi } from '../api';
 import ChartCard from '../components/ChartCard';
-import { formatNumber, formatPercent, CHART_COLORS } from '../utils';
+import { formatNumber, formatPercent, formatINR, inrTooltipFormatter, CHART_COLORS } from '../utils';
 import {
   PieChart, Pie, Cell, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -14,10 +14,20 @@ type CohortItem = Record<string, any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DistBucket = Record<string, any>;
 
+interface ConcentrationData {
+  top5_agents: Array<{ agent_id: number; agent_name: string; agent_premium: number }>;
+}
+
 export default function Agents() {
   const { data: segmentation, loading: segLoading } = useFilteredApi<SegmentItem[]>('/api/agents/segmentation', 300000);
   const { data: activation, loading: actLoading } = useFilteredApi<CohortItem[]>('/api/agents/activation', 300000);
   const { data: distribution, loading: distLoading } = useFilteredApi<DistBucket[]>('/api/agents/performance-distribution', 300000);
+  const { data: concentration, loading: concLoading } = useFilteredApi<ConcentrationData>('/api/executive/concentration', 3600000);
+
+  const topAgentsData = (concentration?.top5_agents ?? []).map(a => ({
+    name: a.agent_name,
+    premium: Number(a.agent_premium),
+  }));
 
   /* Convert string values to numbers for Recharts */
   const segChartData = (segmentation ?? []).map(d => ({
@@ -118,6 +128,33 @@ export default function Agents() {
           )}
         </ChartCard>
       </div>
+
+      {/* Top Agents by Premium */}
+      <ChartCard title="Top Agents by Premium" subtitle="Top 5 agents by total premium generated" loading={concLoading}>
+        {topAgentsData.length > 0 ? (
+          <>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={topAgentsData} layout="vertical" margin={{ left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis
+                  type="number"
+                  tick={{ fontSize: 12 }}
+                  stroke="#94a3b8"
+                  tickFormatter={(v: unknown) => formatINR(v)}
+                />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="#94a3b8" width={120} />
+                <Tooltip formatter={(value: unknown) => [inrTooltipFormatter(value), 'Premium']} />
+                <Bar dataKey="premium" fill={CHART_COLORS[2]} radius={[0, 4, 4, 0]} name="Premium" />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="mt-3 p-3 bg-amber-50 rounded-lg text-sm text-amber-800">
+              <strong>Insight:</strong> High premium concentration in a few agents is a retention risk. Build depth in the next tier to reduce dependency on top performers.
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-slate-400 text-center py-12">No agent premium data available</p>
+        )}
+      </ChartCard>
 
       {/* Performance Distribution */}
       <ChartCard title="Performance Distribution" subtitle="Agents bucketed by policy count" loading={distLoading}>

@@ -534,6 +534,11 @@ app.get(
         FROM broker_totals, total t
         LIMIT 1
       ),
+      top7_brokers_detail AS (
+        SELECT broker_name, broker_premium
+        FROM broker_totals
+        LIMIT 7
+      ),
       agent_totals AS (
         SELECT agent, SUM(premium_amount) AS agent_premium
         FROM sold_policies_data
@@ -566,7 +571,8 @@ app.get(
         END AS top10_agents_pct,
         t10.top10_premium    AS top10_agents_premium,
         tap.grand_total      AS total_6m_agent_premium,
-        (SELECT json_agg(row_to_json(t5)) FROM top5_agents_detail t5) AS top5_agents
+        (SELECT json_agg(row_to_json(t5)) FROM top5_agents_detail t5) AS top5_agents,
+        (SELECT json_agg(row_to_json(t7)) FROM top7_brokers_detail t7) AS top7_brokers
       FROM top_broker tb, top10_agents t10, total_agent_premium tap;
     `;
     const result = await query(sql, allParams);
